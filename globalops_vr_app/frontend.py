@@ -16,6 +16,8 @@ const predictBtn = document.getElementById("predictBtn");
 const applyBtn = document.getElementById("applyBtn");
 const panelBadge = document.getElementById("panelBadge");
 const agentBubble = document.getElementById("agentBubble");
+const agentBtn = document.getElementById("agentBtn");
+const agentBackBtn = document.getElementById("agentBackBtn");
 const envOverlay = document.getElementById("envOverlay");
 const envOverlayClose = document.getElementById("envOverlayClose");
 const envOverlayCity = document.getElementById("envOverlayCity");
@@ -23,6 +25,7 @@ const envOverlayGrid = document.getElementById("envOverlayGrid");
 const envOverlayInsight = document.getElementById("envOverlayInsight");
 const envOverlayForecast = null;
 const overview = document.querySelector(".overview");
+const hud = document.getElementById("hud");
 const errorBox = document.getElementById("errorBox");
 
 function showError(msg) {
@@ -247,19 +250,27 @@ for (const key of Object.keys(REGIONS)) {
 }
 
 let selectedKey = null;
-let mode = "globe"; // "globe" | "detail"
+let mode = "globe"; // "globe" | "detail" | "agent"
 
 // Local GLB models (provided by you) — no Tripo prompts.
 const LOCAL_MODELS = {
   globeIcon: {
     shanghai: "./models/shanghai_oriental_pearl.glb",
     new_york: "./models/nyc_empire_state.glb",
+    london: "./models/london_big_ben.glb",
+    dubai: "./models/dubai_burj_khalifa.glb",
+    tokyo: "./models/tokyo_tower.glb",
+    singapore: "./models/singapore_merlion.glb",
     // Country icon near Sydney
     sydney: "./models/australia_kangaroo.glb",
   },
   detailLandmark: {
     shanghai: "./models/shanghai_oriental_pearl.glb",
     new_york: "./models/nyc_empire_state.glb",
+    london: "./models/london_big_ben.glb",
+    dubai: "./models/dubai_burj_khalifa.glb",
+    tokyo: "./models/tokyo_tower.glb",
+    singapore: "./models/singapore_merlion.glb",
     sydney: "./models/sydney_opera_house.glb",
   },
 };
@@ -339,6 +350,99 @@ const rimLight = new THREE.DirectionalLight(0x2cffdd, 1.2);
 rimLight.position.set(-3, 1.5, -2);
 scene.add(rimLight);
 scene.add(createStars());
+
+// NeuroAgent mini avatar (HUD-ish) for globe home.
+const neuroHud = new THREE.Group();
+neuroHud.visible = false;
+camera.add(neuroHud);
+scene.add(camera);
+loadNeuroAgentHud().catch(() => {});
+let neuroHudOpen = false;
+
+const neuroStage = new THREE.Group();
+neuroStage.visible = false;
+scene.add(neuroStage);
+
+function enterAgentView() {
+  mode = "agent";
+  selectedKey = null;
+  envDrilldown = false;
+  setEnvOverlayVisible(false);
+  hideAgentBubble();
+  globeGroup.visible = false;
+  detailGroup.visible = false;
+  neuroStage.visible = true;
+  neuroHudOpen = false;
+  if (agentBtn) agentBtn.classList.remove("isOpen");
+  hud?.classList?.add("hidden");
+  overview?.classList?.add("hidden");
+  panel?.classList?.add("hidden");
+  if (backBtn) backBtn.classList.add("hidden");
+  agentBackBtn?.classList?.remove("hidden");
+  // Camera framing for agent stage
+  camera.position.set(0.0, 0.65, 2.6);
+  controls.minDistance = 1.4;
+  controls.maxDistance = 6.5;
+  controls.rotateSpeed = 0.6;
+  controls.target.set(0, 0.55, 0);
+  controls.update();
+}
+
+function exitAgentView() {
+  mode = "globe";
+  globeGroup.visible = true;
+  detailGroup.visible = false;
+  neuroStage.visible = false;
+  hud?.classList?.remove("hidden");
+  overview?.classList?.remove("hidden");
+  panel?.classList?.add("hidden");
+  agentBackBtn?.classList?.add("hidden");
+  // Restore globe camera constraints
+  camera.position.set(0, 0.55, 4.2);
+  controls.minDistance = 2.3;
+  controls.maxDistance = 7;
+  controls.rotateSpeed = 0.55;
+  controls.target.set(0, 0.3, 0);
+  controls.update();
+}
+
+agentBtn?.addEventListener("click", () => {
+  if (mode === "agent") return;
+  enterAgentView();
+});
+agentBackBtn?.addEventListener("click", () => {
+  if (mode !== "agent") return;
+  exitAgentView();
+});
+
+async function loadNeuroAgentHud() {
+  try {
+    const loader = await getGltfLoader();
+    const gltf = await loader.loadAsync("./models/neuro_agent.glb");
+    const root = gltf.scene || gltf.scenes?.[0];
+    if (!root) return;
+    normalizeModel(root, 0.24);
+    root.traverse((o) => {
+      if (!o?.isMesh) return;
+      const m = o.material;
+      // Keep original colors/materials. Only add a subtle emissive boost if the material already supports it.
+      if (m && "emissiveIntensity" in m) {
+        try { m.emissiveIntensity = Math.max(Number(m.emissiveIntensity || 0), 0.18); } catch {}
+      }
+      try { o.frustumCulled = false; } catch {}
+    });
+    neuroHud.add(root);
+
+    // Larger clone for the dedicated agent view.
+    const stageRoot = root.clone(true);
+    normalizeModel(stageRoot, 1.5);
+    stageRoot.position.set(0, 0, 0);
+    neuroStage.add(stageRoot);
+    neuroStage.userData.root = stageRoot;
+  } catch (e) {
+    console.warn("[NeuroAgent] failed to load", e);
+  }
+}
 
 // Globe
 const globeGroup = new THREE.Group();
@@ -544,7 +648,8 @@ loadLocalGlobeIcons().catch(() => {});
 
 async function loadLocalGlobeIcons() {
   const tripo = await loadTripoAssetsIfPresent();
-  const globeMap = tripo?.globeIcon ? { ...LOCAL_MODELS.globeIcon, ...tripo.globeIcon } : LOCAL_MODELS.globeIcon;
+  // Prefer local packaged models for key cities; remote URLs are fallback.
+  const globeMap = tripo?.globeIcon ? { ...tripo.globeIcon, ...LOCAL_MODELS.globeIcon } : LOCAL_MODELS.globeIcon;
   for (const [key, url] of Object.entries(globeMap)) {
     const region = REGIONS[key];
     if (!region) continue;
@@ -603,6 +708,9 @@ let carbonTrend = null;
 let envDrilldown = false;
 let draggingLandmark = false;
 let draggingCarbonTrend = false;
+let detailLandmarkLoadToken = 0;
+const detailLandmarkCache = new Map(); // key -> THREE.Object3D
+const detailLandmarkInFlight = new Map(); // key -> Promise<THREE.Object3D|null>
 const dragTmp = new THREE.Vector3();
 const dragStartNdc = new THREE.Vector2();
 let dragStartNdcZ = 0;
@@ -801,6 +909,11 @@ function computeMonitoringHealth(key) {
 function enterDetail(key) {
   selectedKey = key;
   mode = "detail";
+  detailLandmarkLoadToken++;
+
+  neuroStage.visible = false;
+  hud?.classList?.remove("hidden");
+  agentBackBtn?.classList?.add("hidden");
 
   globeGroup.visible = false;
   detailGroup.visible = true;
@@ -855,6 +968,9 @@ function exitDetail() {
   selectedKey = null;
   globeGroup.visible = true;
   detailGroup.visible = false;
+  neuroStage.visible = false;
+  hud?.classList?.remove("hidden");
+  agentBackBtn?.classList?.add("hidden");
   overview?.classList?.remove("hidden");
   controls.enabled = true;
   if (backBtn) backBtn.classList.add("hidden");
@@ -879,6 +995,7 @@ applyBtn?.addEventListener("click", () => {
 });
 window.addEventListener("keydown", (e) => {
   if (e.key === "Escape" && mode === "detail") exitDetail();
+  if (e.key === "Escape" && mode === "agent") exitAgentView();
 });
 
 // Click ENVIRONMENTAL STATUS card to toggle pollutant drilldown.
@@ -1370,6 +1487,17 @@ window.addEventListener("resize", () => {
 renderer.setAnimationLoop((ms) => {
   const t = ms * 0.001;
   if (!userInteracting) globeGroup.rotation.y += 0.0016;
+  // Top-right floating NeuroAgent (camera-attached).
+  neuroHud.visible = mode === "globe" && neuroHudOpen;
+  if (neuroHud.visible) {
+    neuroHud.position.set(0.58, 0.36, -1.35);
+    neuroHud.rotation.set(0, 0.55 + 0.18 * Math.sin(t * 0.9), 0);
+    const s = 1.0 + 0.06 * Math.sin(t * 1.2);
+    neuroHud.scale.setScalar(s);
+  }
+  if (mode === "agent" && neuroStage.visible && neuroStage.userData.root) {
+    neuroStage.rotation.y = 0.18 * Math.sin(t * 0.6);
+  }
   scene.children.forEach((o) => o?.userData?.tick?.(t));
   for (const marker of Object.values(markerObjects)) marker.userData.animate?.(t);
   for (const label of Object.values(labelObjects)) label.quaternion.copy(camera.quaternion);
@@ -1418,17 +1546,40 @@ function createLoadingPlaceholder(color) {
 }
 
 async function loadLocalDetailLandmarkInto(key, parent, fallback) {
+  const token = detailLandmarkLoadToken;
   try {
     const tripo = await loadTripoAssetsIfPresent();
-    const detailMap = tripo?.detailLandmark ? { ...LOCAL_MODELS.detailLandmark, ...tripo.detailLandmark } : LOCAL_MODELS.detailLandmark;
+    // Prefer local packaged models for key cities; remote URLs are fallback.
+    const detailMap = tripo?.detailLandmark ? { ...tripo.detailLandmark, ...LOCAL_MODELS.detailLandmark } : LOCAL_MODELS.detailLandmark;
     const url = detailMap[key];
     if (!url) return;
 
     panelHint.textContent = "Loading 3D landmark… (you can still drag the placeholder)";
-    const loader = await getGltfLoader();
-    const gltf = await loader.loadAsync(url);
-    const root = gltf.scene || gltf.scenes?.[0];
+    const cached = detailLandmarkCache.get(key);
+    let root = null;
+    if (cached) {
+      root = cached.clone(true);
+    } else {
+      let p = detailLandmarkInFlight.get(key);
+      if (!p) {
+        p = (async () => {
+          const loader = await getGltfLoader();
+          const gltf = await loader.loadAsync(url);
+          return gltf.scene || gltf.scenes?.[0] || null;
+        })();
+        detailLandmarkInFlight.set(key, p);
+      }
+      root = await p;
+      detailLandmarkInFlight.delete(key);
+      if (root) {
+        // Store an original in cache; we clone on use.
+        detailLandmarkCache.set(key, root);
+        root = root.clone(true);
+      }
+    }
     if (!root) return;
+    // Ignore stale loads (user switched cities).
+    if (token !== detailLandmarkLoadToken || selectedKey !== key || mode !== "detail") return;
     normalizeModel(root, 1.9);
     const c = alertColor(state[key]?.alert || REGIONS[key].data["Alert Level"]);
     root.traverse((o) => {
@@ -2212,14 +2363,19 @@ INDEX_HTML = """<!doctype html>
     <div class="bubbleBody"></div>
   </div>
 
-  <div class="hud">
+  <div class="hud" id="hud">
     <div>
       <div class="title">LANCHUANG GLOBAL MONITOR VR</div>
       <div class="subtitle">AIoT Spatial Monitoring Platform for Global Clients</div>
       <div class="tagline">From passive monitoring to proactive prediction & optimization</div>
     </div>
-    <div class="hint">Rotate globe · Click a city to enter detail</div>
+    <div class="hudRight">
+      <button id="agentBtn" class="hudAgentBtn" type="button">AGENT</button>
+      <div class="hint">Rotate globe · Click a city to enter detail</div>
+    </div>
   </div>
+
+  <button id="agentBackBtn" class="agentBackBtn hidden" type="button">Back</button>
 
   <div class="overview">
     <div class="boxTitle">GLOBAL OVERVIEW</div>
@@ -2792,6 +2948,59 @@ html, body {
   justify-content: space-between;
   z-index: 5;
   pointer-events: none;
+}
+
+.hudRight {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  pointer-events: auto;
+}
+
+.hudAgentBtn {
+  pointer-events: auto;
+  height: 34px;
+  padding: 0 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(110, 230, 255, 0.28);
+  background: rgba(4, 10, 23, 0.45);
+  color: rgba(235, 250, 255, 0.92);
+  font-weight: 950;
+  letter-spacing: 0.12em;
+  font-size: 11px;
+  cursor: pointer;
+  box-shadow:
+    0 0 0 1px rgba(80, 200, 255, 0.12),
+    0 0 22px rgba(60, 170, 255, 0.18);
+  backdrop-filter: blur(12px);
+}
+
+.hudAgentBtn.isOpen {
+  border-color: rgba(110, 230, 255, 0.45);
+  box-shadow:
+    0 0 0 1px rgba(80, 200, 255, 0.18),
+    0 0 36px rgba(60, 170, 255, 0.28);
+}
+
+.agentBackBtn {
+  position: fixed;
+  left: 18px;
+  top: 18px;
+  z-index: 9;
+  height: 36px;
+  padding: 0 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(110, 230, 255, 0.28);
+  background: rgba(4, 10, 23, 0.45);
+  color: rgba(235, 250, 255, 0.92);
+  font-weight: 950;
+  letter-spacing: 0.12em;
+  font-size: 11px;
+  cursor: pointer;
+  box-shadow:
+    0 0 0 1px rgba(80, 200, 255, 0.12),
+    0 0 22px rgba(60, 170, 255, 0.18);
+  backdrop-filter: blur(12px);
 }
 
 .title {

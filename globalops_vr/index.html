@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Lanchuang Global Monitor VR</title>
-  <link rel="stylesheet" href="./style.css?v=1777141194" />
+  <link rel="stylesheet" href="./style.css?v=1777171398" />
   <script type="importmap">
     {
       "imports": {
@@ -45,14 +45,19 @@
     <div class="bubbleBody"></div>
   </div>
 
-  <div class="hud">
+  <div class="hud" id="hud">
     <div>
       <div class="title">LANCHUANG GLOBAL MONITOR VR</div>
       <div class="subtitle">AIoT Spatial Monitoring Platform for Global Clients</div>
       <div class="tagline">From passive monitoring to proactive prediction & optimization</div>
     </div>
-    <div class="hint">Rotate globe · Click a city to enter detail</div>
+    <div class="hudRight">
+      <button id="agentBtn" class="hudAgentBtn" type="button">AGENT</button>
+      <div class="hint">Rotate globe · Click a city to enter detail</div>
+    </div>
   </div>
+
+  <button id="agentBackBtn" class="agentBackBtn hidden" type="button">Back</button>
 
   <div class="overview">
     <div class="boxTitle">GLOBAL OVERVIEW</div>
@@ -83,6 +88,6 @@
 
   <div id="errorBox" class="errorBox hidden"></div>
 
-  <script type="module" src="./main.js?v=1777141194"></script>
+  <script type="module" src="./main.js?v=1777171398"></script>
 </body>
 </html>
