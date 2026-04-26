@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Lanchuang Global Monitor VR</title>
+  <link rel="stylesheet" href="./style.css?v=1777171398" />
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "./vendor/three.module.js"
+      }
+    }
+  </script>
+</head>
+<body>
+  <canvas id="c"></canvas>
+
+  <div id="envOverlay" class="envOverlay envOverlay--premium hidden">
+    <div class="envOverlayGridBg" aria-hidden="true"></div>
+    <div class="envOverlayGlowFloor" aria-hidden="true"></div>
+    <div class="envOverlayTop">
+      <div>
+        <div id="envOverlayCity" class="envOverlayTitle">Pollutant Composition</div>
+        <div class="envOverlaySub">Real-time air & emission monitoring</div>
+      </div>
+      <button id="envOverlayClose" class="envOverlayClose" aria-label="Close">×</button>
+    </div>
+
+    <div id="envOverlayGrid" class="envGrid envGrid--holo"></div>
+
+    <div class="envBottom">
+      <div class="envInsightBox envInsightBox--premium">
+        <div class="envInsightHead">
+          <span class="envInsightGlyph" aria-hidden="true"></span>
+          <div class="envInsightTitle">AI Environmental Insight</div>
+        </div>
+        <div id="envOverlayInsight" class="envInsightText"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="agentBubble" class="agentBubble hidden">
+    <div class="bubbleTitle">AI Agent</div>
+    <div class="bubbleBody"></div>
+  </div>
+
+  <div class="hud" id="hud">
+    <div>
+      <div class="title">LANCHUANG GLOBAL MONITOR VR</div>
+      <div class="subtitle">AIoT Spatial Monitoring Platform for Global Clients</div>
+      <div class="tagline">From passive monitoring to proactive prediction & optimization</div>
+    </div>
+    <div class="hudRight">
+      <button id="agentBtn" class="hudAgentBtn" type="button">AGENT</button>
+      <div class="hint">Rotate globe · Click a city to enter detail</div>
+    </div>
+  </div>
+
+  <button id="agentBackBtn" class="agentBackBtn hidden" type="button">Back</button>
+
+  <div class="overview">
+    <div class="boxTitle">GLOBAL OVERVIEW</div>
+    <div class="metric"><span>Total Energy Consumption</span><b id="ovEnergy">0.0 MWh</b></div>
+    <div class="metric"><span>Total Carbon Emission</span><b id="ovCarbon">0.0 tCO2e</b></div>
+    <div class="metric"><span>Stable Cities</span><b id="ovStable">0</b></div>
+    <div class="metric"><span>Warning / Critical Cities</span><b id="ovRisk">0</b></div>
+    <div class="metric"><span>Overall Monitoring Health</span><b id="ovHealth">0 / 100</b></div>
+  </div>
+
+  <div id="panel" class="panel hidden">
+    <div class="panelHeader">
+      <div>
+        <div id="panelTitle" class="panelTitle">Select a region</div>
+        <div class="panelSub">City AIoT Monitoring Node · Local AI Agent</div>
+      </div>
+      <div id="panelBadge" class="badge alertGreen">GREEN</div>
+    </div>
+
+    <div id="panelBody" class="panelBody"></div>
+    <div id="panelHint" class="panelHint">Click a glowing city marker on the globe.</div>
+    <div class="buttons">
+      <button id="predictBtn">Generate AI Prediction</button>
+      <button id="applyBtn" class="greenBtn">Apply Optimization</button>
+      <button id="backBtn" class="greenBtn hidden">Back to Globe</button>
+    </div>
+  </div>
+
+  <div id="errorBox" class="errorBox hidden"></div>
+
+  <script type="module" src="./main.js?v=1777171398"></script>
+</body>
+</html>
